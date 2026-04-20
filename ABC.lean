@@ -1,5 +1,148 @@
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Matrix.Notation
+import Mathlib.LinearAlgebra.Matrix.Trace
+import Mathlib.LinearAlgebra.Matrix.Determinant
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Polynomial.Basic
+import Mathlib.Tactic
+
+open Polynomial
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_relation : φ * φ = φ + 1 := by
+  unfold φ
+  ring_nf
+  field_simp
+  ring
+
+/- =========================================================
+   摂動付き局所因子
+   ========================================================= -/
+
+/-- ε付き a_p -/
+def a_p (ε : ℝ) : ℝ := 1 + ε
+
+/-- 局所L因子（det = -1 は維持） -/
+def local_L (ε : ℝ) : Polynomial ℝ :=
+  X^2 - (a_p ε) * X - 1
+
+/-- φでの値 -/
+lemma eval_at_phi (ε : ℝ) :
+  (local_L ε).eval φ = -ε * φ := by
+  unfold local_L a_p
+  have h := phi_relation
+  -- φ^2 = φ + 1 を代入
+  simp [h]
+  ring
+
+/- =========================================================
+   零点のずれ解析
+   ========================================================= -/
+
+/-- 零点条件（φで消えるか） -/
+def has_exact_zero (ε : ℝ) : Prop :=
+  (local_L ε).eval φ = 0
+
+lemma exact_zero_iff (ε : ℝ) :
+  has_exact_zero ε ↔ ε = 0 := by
+  unfold has_exact_zero
+  have h := eval_at_phi ε
+  constructor
+  · intro h0
+    have : -ε * φ = 0 := by simpa [h] using h0
+    have hφ : φ ≠ 0 := by
+      unfold φ; positivity
+    exact mul_eq_zero.mp this |> fun h =>
+      h.resolve_right hφ
+  · intro h0
+    simp [h0, eval_at_phi]
+
+/- =========================================================
+   近傍安定性（φ近くに零点があるか）
+   ========================================================= -/
+
+/-- 多項式の根（公式） -/
+def roots (ε : ℝ) : ℝ × ℝ :=
+  let a := a_p ε
+  let D := a*a + 4
+  ( (a + Real.sqrt D)/2,
+    (a - Real.sqrt D)/2 )
+
+/-- φとの差（主根） -/
+def root_diff (ε : ℝ) : ℝ :=
+  let r := (roots ε).1
+  r - φ
+
+/-- 小さいεなら根はφに近い（モデル） -/
+axiom root_continuity :
+  ∀ δ > 0, ∃ η > 0,
+    ∀ ε, |ε| < η →
+      |root_diff ε| < δ
+
+/- =========================================================
+   Euler積への拡張
+   ========================================================= -/
+
+def PrimeIndex := ℕ
+
+/-- 各素数ごとのε -/
+def eps_family := PrimeIndex → ℝ
+
+/-- 有限Euler積（摂動版） -/
+def euler_L (S : Finset PrimeIndex) (ε : eps_family) : Polynomial ℝ :=
+  ∏ p in S, local_L (ε p)
+
+/-- φでの値 -/
+lemma euler_eval_phi
+  (S : Finset PrimeIndex)
+  (ε : eps_family) :
+  (euler_L S ε).eval φ =
+    ∏ p in S, (- (ε p) * φ) := by
+  classical
+  induction S using Finset.induction_on with
+  | empty =>
+      simp [euler_L]
+  | @insert p S hp ih =>
+      simp [euler_L, Finset.prod_insert, hp,
+            eval_at_phi, ih]
+
+/- =========================================================
+   ランクの安定性（φ版）
+   ========================================================= -/
+
+/-- φ評価ランク -/
+def analytic_rank_phi
+  (S : Finset PrimeIndex)
+  (ε : eps_family) : ℕ :=
+  if (euler_L S ε).eval φ = 0 then 1 else 0
+
+/-- 完全一致条件 -/
+lemma rank_one_exact
+  (S : Finset PrimeIndex)
+  (ε : eps_family) :
+  analytic_rank_phi S ε = 1 ↔
+  (∃ p ∈ S, ε p = 0) := by
+  unfold analytic_rank_phi
+  have h := euler_eval_phi S ε
+  constructor
+  · intro h0
+    have : ∏ p in S, (-ε p * φ) = 0 := by simpa [h] using h0
+    classical
+    -- 積が0 → どれかが0
+    obtain ⟨p, hpS, hp0⟩ :=
+      Finset.exists_ne_zero_of_prod_eq_zero this
+    use p, hpS
+    have : ε p = 0 := by
+      have hφ : φ ≠ 0 := by unfold φ; positivity
+      have := mul_eq_zero.mp hp0
+      exact this.resolve_right hφ
+    exact this
+  · rintro ⟨p, hpS, hp0⟩
+    have : (-ε p * φ) = 0 := by simp [hp0]
+    simp [h, Finset.prod_eq_zero_iff, this, hpS]
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Notation
 import Mathlib.LinearAlgebra.Matrix.Determinant
 import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.LinearAlgebra.Matrix.Charpoly
