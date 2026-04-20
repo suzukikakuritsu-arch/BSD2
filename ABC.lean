@@ -18,6 +18,116 @@ lemma phi_relation : φ * φ = φ + 1 := by
   ring
 
 /- =========================================================
+   具体行列（前と同じ）
+   ========================================================= -/
+
+def M : Matrix (Fin 2) (Fin 2) ℝ :=
+![![0, 1],
+  ![1, 1]]
+
+lemma M_sq : M ⬝ M = M + 1 := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+  simp [M, Matrix.mul_apply, Fin.sum_univ_two]
+
+lemma M_charpoly :
+  M.charpoly = X^2 - X - 1 := by
+  ext
+  simp [M]
+
+/- =========================================================
+   L関数（= 特性多項式）
+   ========================================================= -/
+
+def L : Polynomial ℝ := M.charpoly
+
+lemma L_at_phi : L.eval φ = 0 := by
+  simp [L, M_charpoly, phi_relation]
+
+lemma L_at_one : L.eval 1 ≠ 0 := by
+  simp [L, M_charpoly]
+
+/- =========================================================
+   再定義ランク
+   ========================================================= -/
+
+/-- 従来型（s=1） -/
+def analytic_rank_classical : ℕ :=
+  if L.eval 1 = 0 then 1 else 0
+
+/-- φ評価版（再定義） -/
+def analytic_rank_phi : ℕ :=
+  if L.eval φ = 0 then 1 else 0
+
+/-- φ側（代数ランクと対応させる） -/
+def algebraic_rank_phi : ℕ :=
+  if L.eval φ = 0 then 1 else 0
+
+lemma classical_val :
+  analytic_rank_classical = 0 := by
+  unfold analytic_rank_classical
+  have h := L_at_one
+  simp [h]
+
+lemma phi_val :
+  analytic_rank_phi = 1 ∧ algebraic_rank_phi = 1 := by
+  unfold analytic_rank_phi algebraic_rank_phi
+  have h := L_at_phi
+  simp [h]
+
+/- =========================================================
+   再定義BSD
+   ========================================================= -/
+
+theorem BSD_phi_version :
+  analytic_rank_phi = algebraic_rank_phi := by
+  rfl
+
+/- =========================================================
+   比較（どこがズレるか）
+   ========================================================= -/
+
+theorem BSD_failure_classical :
+  analytic_rank_classical ≠ algebraic_rank_phi := by
+  simp [classical_val, phi_val]
+
+/- =========================================================
+   変数シフトとしての解釈
+   ========================================================= -/
+
+/-- 変数平行移動 L(s) → L(s + (φ - 1)) -/
+def L_shift (s : ℝ) : ℝ :=
+  L.eval (s + (φ - 1))
+
+/-- s=1 が φ に対応 -/
+lemma shift_match :
+  L_shift 1 = L.eval φ := by
+  simp [L_shift]
+
+/-- シフト後は「1で零点」になる -/
+lemma shifted_zero :
+  L_shift 1 = 0 := by
+  simpa [shift_match] using L_at_phi
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Notation
+import Mathlib.LinearAlgebra.Matrix.Determinant
+import Mathlib.LinearAlgebra.Matrix.Trace
+import Mathlib.LinearAlgebra.Matrix.Charpoly
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Polynomial.Basic
+import Mathlib.Tactic
+
+open Matrix Polynomial
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_relation : φ * φ = φ + 1 := by
+  unfold φ
+  ring_nf
+  field_simp
+  ring
+
+/- =========================================================
    具体Frobenius行列（φ多項式を満たす）
    ========================================================= -/
 
