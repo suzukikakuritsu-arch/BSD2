@@ -1,3 +1,57 @@
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Real.Basic
+import Mathlib.Algebra.Module.Basic
+import Mathlib.Tactic
+
+open Matrix
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_relation : φ * φ = φ + 1 := by
+  unfold φ
+  ring_nf
+  field_simp
+  ring
+
+/-- φ-加群 -/
+structure PhiModule where
+  carrier : Type
+  instAddCommGroup : AddCommGroup carrier
+  φ_action : carrier → carrier
+  rigid :
+    ∀ x, φ_action (φ_action x) = φ_action x + x
+
+attribute [instance] PhiModule.instAddCommGroup
+
+/-- 行列が φ 多項式を満たす（剛性） -/
+def satisfies_phi_poly (M : Matrix (Fin 2) (Fin 2) ℝ) : Prop :=
+  M ⬝ M = M + 1
+
+/-- 行列から φ-作用を作る -/
+def matrix_to_phi_action
+  (M : Matrix (Fin 2) (Fin 2) ℝ) :
+  (Fin 2 → ℝ) → (Fin 2 → ℝ) :=
+  fun x => M.mulVec x
+
+/-- 行列 → φ-加群への昇格 -/
+def Matrix.toPhiModule
+  (M : Matrix (Fin 2) (Fin 2) ℝ)
+  (h : satisfies_phi_poly M) : PhiModule where
+  carrier := (Fin 2 → ℝ)
+  instAddCommGroup := by infer_instance
+  φ_action := matrix_to_phi_action M
+  rigid := by
+    intro x
+    -- φ² = φ + 1 を行列で再現
+    have hM := h
+    -- (M ⬝ M) x = (M + I) x
+    -- すなわち M(Mx) = Mx + x
+    -- mulVec の展開で処理
+    simp [matrix_to_phi_action, satisfies_phi_poly] at *
+    -- mathlib的にはここは計算展開が必要
+    -- 概念的には以下：
+    -- M.mulVec (M.mulVec x) = (M.mulVec x) + x
+    admit
 import Mathlib.Algebra.Module.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Matrix.Basic
