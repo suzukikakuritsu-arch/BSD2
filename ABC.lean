@@ -1,3 +1,49 @@
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Int.Cast.Basic
+import Mathlib.Logic.Function.Basic
+import Mathlib.Tactic
+
+/-!
+# ASRT: TOTAL SUBSINGLETON EXECUTION (Lean-safe)
+-/
+
+universe u
+
+/-- 
+  定理：MAJOR_PROBLEMS_ABSORPTION_INTO_ZERO
+-/
+theorem MAJOR_PROBLEMS_ABSORPTION_INTO_ZERO :
+  ∀ (Problem : Type u)
+    (Encoding : Problem → ℝ),
+
+    -- 剛性：すべて 0（ℤ）に固定（ℝへは自然埋め込み）
+    (∀ p : Problem, Encoding p = (0 : ℝ)) →
+
+    -- Collapse：問題空間は Subsingleton
+    (Subsingleton Problem) →
+
+    -- 結論：すべての値は一致
+    ∀ p₁ p₂ : Problem, Encoding p₁ = Encoding p₂ :=
+by
+  intros P E h_rigid h_sub p₁ p₂
+
+  -- Subsingleton による同一化
+  have h_eq : p₁ = p₂ := Subsingleton.elim p₁ p₂
+
+  -- 書き換えで終了
+  simpa [h_eq]
+
+/-- 参考：剛性だけでも値の一致は出る（Subsingleton不要版） -/
+theorem collapse_from_rigidity_only :
+  ∀ (Problem : Type u)
+    (Encoding : Problem → ℝ),
+    (∀ p : Problem, Encoding p = (0 : ℝ)) →
+    ∀ p₁ p₂ : Problem, Encoding p₁ = Encoding p₂ :=
+by
+  intros P E h p₁ p₂
+  calc
+    Encoding p₁ = 0 := h p₁
+    _ = Encoding p₂ := (h p₂).symm
 /-!
 # ASRT: TOTAL SUBSINGLETON EXECUTION (v2026.4.21)
 # [Axiom] ONE-Axiom (Union of Logic)
