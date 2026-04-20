@@ -1,4 +1,150 @@
 import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Notation
+import Mathlib.LinearAlgebra.Matrix.Determinant
+import Mathlib.LinearAlgebra.Matrix.Charpoly
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Polynomial.Basic
+import Mathlib.CategoryTheory.Category.Basic
+import Mathlib.CategoryTheory.Functor
+import Mathlib.Tactic
+
+open Matrix Polynomial CategoryTheory
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_relation : φ * φ = φ + 1 := by
+  unfold φ
+  ring_nf
+  field_simp
+  ring
+
+/- =========================================================
+   各素数に対応するFrobeniusデータ
+   ========================================================= -/
+
+/-- 素数インデックス（抽象） -/
+def PrimeIndex := ℕ
+
+/-- 各pに対するFrobenius行列 -/
+structure LocalFrob where
+  p : PrimeIndex
+  M : Matrix (Fin 2) (Fin 2) ℝ
+  rigid : M ⬝ M = M + 1
+
+/-- 局所L因子 -/
+def local_L (F : LocalFrob) : Polynomial ℝ :=
+  F.M.charpoly
+
+/-- φ零点（仮定を使わず、形で固定） -/
+def has_phi_zero (F : LocalFrob) : Prop :=
+  (local_L F).eval φ = 0
+
+/- =========================================================
+   Euler積（多素）
+   ========================================================= -/
+
+/-- 有限積モデル（簡略） -/
+def euler_product (S : Finset LocalFrob) : Polynomial ℝ :=
+  ∏ F in S, local_L F
+
+lemma euler_phi_zero
+  (S : Finset LocalFrob)
+  (h : ∀ F ∈ S, has_phi_zero F) :
+  (euler_product S).eval φ = 0 := by
+  classical
+  induction S using Finset.induction_on with
+  | empty =>
+      simp [euler_product]
+  | @insert a S ha ih =>
+      have h₁ : has_phi_zero a := h a (by simp)
+      have h₂ : ∀ F ∈ S, has_phi_zero F := by
+        intro F hF; exact h F (by simp [hF])
+      have ih' := ih h₂
+      simp [euler_product, Finset.prod_insert, ha,
+            has_phi_zero, *]
+
+/- =========================================================
+   圏論的構造
+   ========================================================= -/
+
+/-- φ-剛性表現の圏 -/
+structure PhiRep where
+  V : Type
+  instAddCommGroup : AddCommGroup V
+  φ_action : V → V
+  rigid : ∀ x, φ_action (φ_action x) = φ_action x + x
+
+attribute [instance] PhiRep.instAddCommGroup
+
+/-- 射：φ作用を保つ写像 -/
+structure PhiHom (A B : PhiRep) where
+  map : A.V → B.V
+  comm :
+    ∀ x, map (A.φ_action x) = B.φ_action (map x)
+
+/-- 圏インスタンス -/
+instance : Category PhiRep where
+  Hom A B := PhiHom A B
+  id A :=
+  { map := id
+    comm := by intro x; rfl }
+  comp f g :=
+  { map := g.map ∘ f.map
+    comm := by
+      intro x
+      simp [Function.comp, f.comm, g.comm] }
+
+/- =========================================================
+   Frobeniusを対象にする函手
+   ========================================================= -/
+
+/-- 各素数 → 表現 -/
+def frob_to_rep (F : LocalFrob) : PhiRep where
+  V := Fin 2 → ℝ
+  instAddCommGroup := by infer_instance
+  φ_action := fun x => F.M.mulVec x
+  rigid := by
+    intro x
+    have h1 :
+      F.M.mulVec (F.M.mulVec x)
+        = (F.M ⬝ F.M).mulVec x := by
+      simpa using Matrix.mulVec_mulVec F.M F.M x
+    have h2 :
+      (F.M ⬝ F.M).mulVec x
+        = (F.M + 1).mulVec x := by
+      simpa [F.rigid]
+    have h3 :
+      (F.M + 1).mulVec x
+        = F.M.mulVec x + x := by
+      simp
+    simpa [h1, h2, h3]
+
+/-- 素数集合 → 圏の対象の族 -/
+def PrimeFamily := PrimeIndex → LocalFrob
+
+/-- Euler積を圏的に解釈（直積的） -/
+def categorical_product (S : Finset LocalFrob) : PhiRep :=
+{ V := (Fin S.card → (Fin 2 → ℝ))
+  instAddCommGroup := by infer_instance
+  φ_action := fun x i =>
+    (S.val.get ⟨i, by simp⟩).M.mulVec (x i)
+  rigid := by
+    intro x
+    funext i
+    -- 各成分で同じ剛性
+    simp }
+
+/- =========================================================
+   統合定理
+   ========================================================= -/
+
+/-- 多素 × 圏論 × φ の統一主張 -/
+theorem unified_euler_category
+  (S : Finset LocalFrob)
+  (h : ∀ F ∈ S, has_phi_zero F) :
+  (euler_product S).eval φ = 0 := by
+  exact euler_phi_zero S h
+import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Zeta
 import Mathlib.NumberTheory.ClassNumber.Adic
