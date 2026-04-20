@@ -1,3 +1,59 @@
+import Mathlib.Data.Real.Basic
+
+noncomputable section
+open Classical
+
+structure EllipticCurve (K : Type*) [Field K] where
+  dummy : Unit := ()
+
+/-- ranks -/
+axiom algebraic_rank
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℕ
+
+axiom analytic_rank
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℕ
+
+/-- rigidity spectrum -/
+axiom rigidity_spectrum
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℝ
+
+/-- YM side -/
+axiom YM_transfer
+  (K : Type*) [Field K] (E : EllipticCurve K) : Type*
+
+axiom mass_gap :
+  Type* → ℝ
+
+/-- quantization -/
+def quantize (x : ℝ) : ℕ :=
+  Int.toNat (Int.floor x)
+
+/-- 橋：物理 ↔ 数論 -/
+axiom rigidity_equals_mass_gap
+  (K : Type*) [Field K] (E : EllipticCurve K) :
+  rigidity_spectrum K E = Real.exp (mass_gap (YM_transfer K E))
+
+/-- ランク生成（統一） -/
+axiom rank_from_rigidity_unique
+  (K : Type*) [Field K] :
+  ∃! f : ℝ → ℕ,
+    ∀ (E : EllipticCurve K),
+      algebraic_rank K E = f (rigidity_spectrum K E) ∧
+      analytic_rank K E = f (rigidity_spectrum K E)
+
+/-- 物理的表現（analytic側） -/
+theorem analytic_from_mass_gap
+  (K : Type*) [Field K] (E : EllipticCurve K) :
+  analytic_rank K E = quantize (Real.exp (mass_gap (YM_transfer K E))) := by
+  classical
+  obtain ⟨f, hf, _⟩ := rank_from_rigidity_unique K
+  have h := hf E
+  have hspec := rigidity_equals_mass_gap K E
+  -- f(spectrum) に展開
+  have := h.2
+  -- ここで f = quantize と同定するなら別axiomが必要
+  -- （下で整理）
+  sorry
 /-!
 # ASRT INTEGRATION: YM-MASS-GAP ↔ BSD-RANK
 # 
