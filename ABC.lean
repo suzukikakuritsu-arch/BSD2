@@ -1,3 +1,145 @@
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Notation
+import Mathlib.LinearAlgebra.Matrix.Determinant
+import Mathlib.LinearAlgebra.Matrix.Trace
+import Mathlib.LinearAlgebra.Matrix.Charpoly
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Polynomial.Basic
+import Mathlib.Tactic
+
+open Matrix Polynomial
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_relation : φ * φ = φ + 1 := by
+  unfold φ
+  ring_nf
+  field_simp
+  ring
+
+/- =========================================================
+   具体Frobenius行列（φ多項式を満たす）
+   ========================================================= -/
+
+/-- Companion matrix of X^2 - X - 1 -/
+def FrobM : Matrix (Fin 2) (Fin 2) ℝ :=
+![![0, 1],
+  ![1, 1]]
+
+/-- 行列の二乗計算 -/
+lemma FrobM_sq :
+  FrobM ⬝ FrobM = FrobM + 1 := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+  simp [FrobM, Matrix.mul_apply, Fin.sum_univ_two]
+
+/-- trace = 1 -/
+lemma FrobM_trace :
+  Matrix.trace (Fin 2) ℝ ℝ FrobM = 1 := by
+  simp [FrobM]
+
+/-- det = -1 -/
+lemma FrobM_det :
+  FrobM.det = -1 := by
+  simp [FrobM]
+
+/-- 特性多項式 = X^2 - X - 1 -/
+lemma FrobM_charpoly :
+  FrobM.charpoly = X^2 - X - 1 := by
+  -- 2×2標準公式で確定
+  ext
+  simp [FrobM_trace, FrobM_det]
+
+/-- φ は固有値 -/
+lemma phi_is_eigen :
+  (FrobM.charpoly).eval φ = 0 := by
+  simp [FrobM_charpoly, phi_relation]
+
+/-- 1 は固有値でない -/
+lemma one_not_eigen :
+  (FrobM.charpoly).eval 1 ≠ 0 := by
+  simp [FrobM_charpoly]
+
+/- =========================================================
+   作用としての解釈
+   ========================================================= -/
+
+def V := Fin 2 → ℝ
+
+/-- Frobenius作用 -/
+def Frob (x : V) : V :=
+  FrobM.mulVec x
+
+/-- φ作用（同じ行列で統一） -/
+def φ_action (x : V) : V :=
+  FrobM.mulVec x
+
+/-- 剛性：φ² = φ + id -/
+lemma rigid_action (x : V) :
+  φ_action (φ_action x) = φ_action x + x := by
+  unfold φ_action
+  have h1 :
+    FrobM.mulVec (FrobM.mulVec x)
+      = (FrobM ⬝ FrobM).mulVec x := by
+    simpa using Matrix.mulVec_mulVec FrobM FrobM x
+
+  have h2 :
+    (FrobM ⬝ FrobM).mulVec x
+      = (FrobM + 1).mulVec x := by
+    simpa [FrobM_sq]
+
+  have h3 :
+    (FrobM + 1).mulVec x
+      = FrobM.mulVec x + x := by
+    simp
+
+  simpa [h1, h2, h3]
+
+/- =========================================================
+   L関数（完全に具体化）
+   ========================================================= -/
+
+def L_poly : Polynomial ℝ :=
+  FrobM.charpoly
+
+/-- L(1) ≠ 0 → 零点なし -/
+lemma L_at_one :
+  L_poly.eval 1 ≠ 0 := by
+  simpa [L_poly] using one_not_eigen
+
+/-- L(φ) = 0 → φが零点 -/
+lemma L_at_phi :
+  L_poly.eval φ = 0 := by
+  simpa [L_poly] using phi_is_eigen
+
+/- =========================================================
+   rank の確定
+   ========================================================= -/
+
+/-- rank（固有値1の重複度モデル） -/
+def analytic_rank : ℕ :=
+  if L_poly.eval 1 = 0 then 1 else 0
+
+/-- φ側 rank -/
+def algebraic_rank : ℕ :=
+  if L_poly.eval φ = 0 then 1 else 0
+
+lemma analytic_rank_val :
+  analytic_rank = 0 := by
+  unfold analytic_rank
+  have h := L_at_one
+  simp [h]
+
+lemma algebraic_rank_val :
+  algebraic_rank = 1 := by
+  unfold algebraic_rank
+  have h := L_at_phi
+  simp [h]
+
+/-- 最終関係（ズレの明示） -/
+theorem rank_gap :
+  analytic_rank ≠ algebraic_rank := by
+  simp [analytic_rank_val, algebraic_rank_val]
 import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Module.Basic
 import Mathlib.LinearAlgebra.Basic
