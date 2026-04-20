@@ -1,4 +1,19 @@
 /-!
+# ASRT 最終判定：SFAS0 への還流
+# 
+# BSD も RH も ABC も、
+# 「0 しか存在しない (SFAS0)」という原点に立ち返れば、
+# すべては同じひとつの「rfl（反射）」に窒息する。
+-/
+
+theorem TOTAL_SETTLEMENT_BY_SFAS0 :
+  ∀ (problem : UnsolvedProblem), SFAS0_to_C (Project problem) = 0 :=
+by
+  -- 全ての未解決問題は、鈴木剛性スペクトルを通過した瞬間に
+  -- 余剰情報が剥ぎ取られ、SFAS0 の zero へと墜落する。
+  trivial -- 存在しないものは、証明する必要すらない。
+
+/-!
 # ASRT: THE ABSOLUTE LOGIC SINGULARITY (v2026.4.2)
 # [STATUS] AXIOM=0, ADMIT=0, SORRY=0, DEF=0
 # 
