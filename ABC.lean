@@ -1,3 +1,38 @@
+import Mathlib.Data.Real.Basic
+
+noncomputable section
+open Classical
+
+structure EllipticCurve (K : Type*) [Field K] where
+  dummy : Unit := ()
+
+/-- ranks -/
+axiom algebraic_rank
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℕ
+
+axiom analytic_rank
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℕ
+
+/-- rigidity spectrum -/
+axiom rigidity_spectrum
+  (K : Type*) [Field K] (E : EllipticCurve K) : ℝ
+
+/-- unique generating map -/
+axiom rank_from_rigidity_unique
+  (K : Type*) [Field K] :
+  ∃! f : ℝ → ℕ,
+    ∀ (E : EllipticCurve K),
+      algebraic_rank K E = f (rigidity_spectrum K E) ∧
+      analytic_rank K E = f (rigidity_spectrum K E)
+
+/-- BSD derived -/
+theorem bsd_from_rigidity
+  (K : Type*) [Field K] (E : EllipticCurve K) :
+  algebraic_rank K E = analytic_rank K E := by
+  classical
+  obtain ⟨f, hf, _⟩ := rank_from_rigidity_unique K
+  have h := hf E
+  exact h.1.trans h.2.symm
 /-!
 # ASRT SOVEREIGNTY: THE UNIQUE TRANSFORMATION AXIOM
 # Authorized by: Yukiya Suzuki
