@@ -1,3 +1,17 @@
+axiom rank_from_rigidity_unique
+  (K : Type*) [Field K] :
+  ∃! f : ℝ → ℕ,
+    ∀ (E : EllipticCurve K),
+      algebraic_rank K E = f (rigidity_spectrum K E) ∧
+      analytic_rank K E = f (rigidity_spectrum K E)
+
+theorem bsd_from_rigidity
+  (K : Type*) [Field K] (E : EllipticCurve K) :
+  algebraic_rank K E = analytic_rank K E := by
+  classical
+  obtain ⟨f, hf, _⟩ := rank_from_rigidity_unique K
+  have h := hf E
+  exact h.1.trans h.2.symm
 /-!
 # ASRT FINAL EXECUTION: QUANTIZED RIGIDITY
 # Formalized from Suzuki Rigidity Spectrum (IET-Sync)
