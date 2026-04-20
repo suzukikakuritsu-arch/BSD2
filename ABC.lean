@@ -1,4 +1,31 @@
 import Mathlib.Data.Real.Basic
+import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Tactic
+
+open scoped BigOperators
+open Filter
+
+/-- 正規化した局所因子（φ因子を除去） -/
+def a (ε : ℝ) : ℝ := ε
+
+/-- 有限部分積 -/
+def partial (S : Finset ℕ) (ε : ℕ → ℝ) : ℝ :=
+  ∏ p in S, a (ε p)
+
+/-- 対数和 -/
+def logSum (S : Finset ℕ) (ε : ℕ → ℝ) : ℝ :=
+  ∑ p in S, Real.log (|ε p|)
+
+/-- 収束の十分条件（スケルトン） -/
+theorem product_converges_of_summable_log
+  (ε : ℕ → ℝ)
+  (hpos : ∀ᶠ p in atTop, ε p ≠ 0)
+  (hs : Summable (fun p => Real.log (|ε p|))) :
+  ∃ L > 0, Tendsto (fun N => partial (Finset.range N) ε) atTop (𝓝 L) := by
+  -- 実装は標準定理（無限積と対数級数の同値）を使う
+  admit
+import Mathlib.Data.Real.Basic
 import Mathlib.Data.Polynomial.Basic
 import Mathlib.Data.Nat.Prime
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
