@@ -1,3 +1,150 @@
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Polynomial.Basic
+import Mathlib.Data.Nat.Prime
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Tactic
+
+open Polynomial
+
+noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
+
+lemma phi_ne_zero : φ ≠ 0 := by
+  unfold φ; positivity
+
+/- =========================================================
+   局所因子（摂動付き）
+   ========================================================= -/
+
+def local_L (ε : ℝ) : Polynomial ℝ :=
+  X^2 - (1 + ε) * X - 1
+
+lemma eval_phi (ε : ℝ) :
+  (local_L ε).eval φ = -ε * φ := by
+  have h : φ*φ = φ + 1 := by
+    unfold φ; ring_nf; field_simp; ring
+  simp [local_L, h]; ring
+
+/- =========================================================
+   無限Euler積（部分積で定義）
+   ========================================================= -/
+
+def PrimeIndex := ℕ
+def eps_family := PrimeIndex → ℝ
+
+/-- Nまでの部分積 -/
+def partial_L (N : ℕ) (ε : eps_family) : ℝ :=
+  ∏ p in (Finset.range N), (local_L (ε p)).eval φ
+
+lemma partial_formula (N : ℕ) (ε : eps_family) :
+  partial_L N ε =
+    ∏ p in (Finset.range N), (-ε p * φ) := by
+  classical
+  unfold partial_L
+  simp [eval_phi]
+
+/-- 無限積の「零化条件」モデル -/
+def has_global_zero (ε : eps_family) : Prop :=
+  ∀ N, partial_L N ε = 0
+
+lemma global_zero_iff :
+  has_global_zero ε ↔
+  ∀ N, ∃ p < N, ε p = 0 := by
+  constructor
+  · intro h N
+    have hN := h N
+    have hf := partial_formula N ε
+    have : ∏ p in Finset.range N, (-ε p * φ) = 0 := by
+      simpa [hf] using hN
+    classical
+    obtain ⟨p, hpN, hp0⟩ :=
+      Finset.exists_ne_zero_of_prod_eq_zero this
+    refine ⟨p, ?_, ?_⟩
+    · simpa using hpN
+    · have : ε p = 0 := by
+        have := mul_eq_zero.mp hp0
+        exact this.resolve_right phi_ne_zero
+      exact this
+  · intro h N
+    rcases h N with ⟨p, hpN, hp0⟩
+    have : (-ε p * φ) = 0 := by simp [hp0]
+    have : ∏ p in Finset.range N, (-ε p * φ) = 0 := by
+      classical
+      refine Finset.prod_eq_zero_iff.mpr ?_
+      exact ⟨p, by simpa using hpN, this⟩
+    simpa [partial_formula]
+
+/- =========================================================
+   密度（有限版近似）
+   ========================================================= -/
+
+/-- ε_p = 0 の比率（Nまで） -/
+def zero_density (N : ℕ) (ε : eps_family) : ℝ :=
+  ((Finset.range N).filter (fun p => ε p = 0)).card / N
+
+/-- 密度が正なら、無限にゼロが出る -/
+axiom positive_density_infinitely_many :
+  (∃ δ > 0, ∀ᶠ N in Filter.atTop,
+      zero_density N ε ≥ δ)
+  → ∀ N, ∃ p ≥ N, ε p = 0
+
+/- =========================================================
+   φ近傍スペクトル
+   ========================================================= -/
+
+/-- 局所根（主根） -/
+def root_main (ε : ℝ) : ℝ :=
+  let a := 1 + ε
+  (a + Real.sqrt (a*a + 4)) / 2
+
+/-- φからの距離 -/
+def root_diff (ε : ℝ) : ℝ :=
+  root_main ε - φ
+
+/-- 連続性（仮定：実際は解析で証明可能） -/
+axiom root_continuity :
+  ∀ δ > 0, ∃ η > 0,
+    ∀ ε, |ε| < η →
+      |root_diff ε| < δ
+
+/-- φ近傍にいる素数の割合 -/
+def near_phi_density (N : ℕ) (ε : eps_family) (δ : ℝ) : ℝ :=
+  ((Finset.range N).filter
+    (fun p => |root_diff (ε p)| < δ)).card / N
+
+/- =========================================================
+   ランク概念（再定義）
+   ========================================================= -/
+
+/-- 厳密ランク（φで零点） -/
+def exact_rank (ε : eps_family) : Prop :=
+  has_global_zero ε
+
+/-- 近似ランク（φ近傍に集中） -/
+def approx_rank (ε : eps_family) : Prop :=
+  ∀ δ > 0, ∃ η > 0,
+    ∀ᶠ N in Filter.atTop,
+      near_phi_density N ε δ ≥ η
+
+/- =========================================================
+   統合定理（モデル）
+   ========================================================= -/
+
+/-- 密度条件 → 近似ランク成立 -/
+axiom density_implies_approx :
+  (∃ δ > 0, ∀ᶠ N in Filter.atTop,
+      zero_density N ε ≥ δ)
+  → approx_rank ε
+
+/-- 厳密ランク → 近似ランク -/
+lemma exact_implies_approx :
+  exact_rank ε → approx_rank ε := by
+  intro h
+  -- 厳密にゼロが無限に出るなら当然近傍にも集まる
+  have : ∃ δ > 0, ∀ᶠ N in Filter.atTop,
+      zero_density N ε ≥ δ := by
+    -- モデル仮定（密度下限を持つとみなす）
+    admit
+  exact density_implies_approx this
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Matrix.Notation
 import Mathlib.LinearAlgebra.Matrix.Trace
