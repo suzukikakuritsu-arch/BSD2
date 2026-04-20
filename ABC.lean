@@ -1,4 +1,102 @@
 import Mathlib.Data.Real.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.Topology.Algebra.Order.Monoid
+import Mathlib.Tactic
+
+open Filter
+open scoped BigOperators
+
+/-- 正の数列（Euler積用） -/
+def a : ℕ → ℝ := fun n => 1 + (1 / (n + 2 : ℝ))
+
+lemma a_pos : ∀ n, 0 < a n := by
+  intro n
+  simp [a]
+  positivity
+
+/-- 部分積 -/
+def P (N : ℕ) : ℝ :=
+  ∏ n in Finset.range N, a n
+
+/-- 対数和 -/
+def S (N : ℕ) : ℝ :=
+  ∑ n in Finset.range N, Real.log (a n)
+
+/- =========================================================
+   基本恒等式：log(∏) = ∑ log
+   ========================================================= -/
+
+lemma log_prod_eq_sum (N : ℕ) :
+  Real.log (P N) = S N := by
+  classical
+  induction N with
+  | zero =>
+      simp [P, S]
+  | succ N ih =>
+      simp [P, S, Finset.range_succ, Finset.prod_insert,
+            Finset.mem_range, ih,
+            Real.log_mul (by positivity) (by positivity)]
+
+/- =========================================================
+   収束準備：log(1+x) ≈ x
+   ========================================================= -/
+
+lemma log_le_linear (x : ℝ) (hx : 0 ≤ x) :
+  Real.log (1 + x) ≤ x := by
+  have h := Real.log_one_add_le x hx
+  simpa using h
+
+lemma log_asymp :
+  ∃ C : ℝ, ∀ n, Real.log (a n) ≤ C / (n+1) := by
+  use 1
+  intro n
+  simp [a]
+  have hx : 0 ≤ (1 / (n+2 : ℝ)) := by positivity
+  have h := log_le_linear (1/(n+2:ℝ)) hx
+  have : (1/(n+2:ℝ)) ≤ 1/(n+1:ℝ) := by
+    have : (n+1:ℝ) ≤ (n+2:ℝ) := by simp
+    exact one_div_le_one_div_of_le this (by positivity) (by positivity)
+  linarith
+
+/- =========================================================
+   対数和の収束（比較判定）
+   ========================================================= -/
+
+lemma log_summable :
+  Summable (fun n => Real.log (a n)) := by
+  -- log(a_n) ≤ 1/(n+1) なので p級数比較
+  have hbound : ∃ C, ∀ n, Real.log (a n) ≤ C / (n+1) := log_asymp
+  obtain ⟨C, hC⟩ := hbound
+  have hseries : Summable (fun n => (1 : ℝ)/(n+1)) := by
+    simpa using summable_nat_add_one_inv
+  exact Summable.of_nonneg_of_le
+    (fun n => by
+      have : 0 ≤ Real.log (a n) := by
+        have : 1 ≤ a n := by simp [a]
+        exact Real.log_nonneg (by linarith)
+      exact this)
+    (fun n => by simpa using hC n)
+    hseries
+
+/- =========================================================
+   無限積の収束
+   ========================================================= -/
+
+theorem infinite_product_converges :
+  ∃ L > 0, Tendsto P atTop (𝓝 L) := by
+  have hlog := log_summable
+  -- 標準定理：log収束 ⇔ 積収束
+  have hprod :
+    ∃ L, Tendsto (fun n => Real.log (P n)) atTop (𝓝 L) := by
+    exact Real.tendsto_log_of_summable hlog
+  obtain ⟨L, hL⟩ := hprod
+
+  -- 指数で戻す
+  refine ⟨Real.exp L, ?_, ?_⟩
+  · positivity
+  · simpa using Real.tendsto_exp.comp hL
+import Mathlib.Data.Real.Basic
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Tactic
