@@ -1,3 +1,14 @@
+-- 既存数学の世界（変数は自由）
+def independent_vars (n : ℕ) : ℕ := 
+  -- 変数を増やすほど、組み合わせの空間は爆発する
+  n^5 
+
+-- ASRTの世界（変数は φ にロックされている）
+def rigid_vars (n : ℕ) : ℝ := 
+  -- 変数が増えても、すべては φ^k という「一列」に整列する
+  -- つまり、自由度は常に 1。にじみ出す隙間がない。
+  φ^n
+
 import Mathlib.Data.Real.Basic
 
 noncomputable def φ : ℝ := (1 + Real.sqrt 5) / 2
